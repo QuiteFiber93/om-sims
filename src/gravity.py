@@ -233,21 +233,3 @@ class PointMass(GravityModel):
     
     def acceleration(self, t: float, r: np.ndarray, v:np.ndarray = None):
         return -self.mu/np.linalg.norm(r)**3 * r
-    
-class AerodynamicDrag(Perturbation):
-    def __init__(self, Cd: float, atm_profile: str, area: float):
-        self.Cd = Cd
-        self._atm_profile_loc = atm_profile
-        self.area = area
-        # parse through atm profile
-        self.atm_profile = None
-        
-    def acceleration(self, t: float, r: np.ndarray, v: np.ndarray) -> np.ndarray:
-        # Use atm profile to calculate drag as 
-        # Drag acceleration = Cd * density * reference area * v^2 * / 2
-        # Drag acceleration opposes direction of velocity -> Drag acceleration as vector = -Drag acceleration * vhat
-        # Assumes r and v are in the same frame as the atm_profile
-        drag_dir = - v / np.linalg.norm(v)
-        density = self.atm_profile(t, r, v)
-        return self.Cd * density * self.area * np.dot(v, v)  / 2 * drag_dir
-    

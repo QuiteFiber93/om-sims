@@ -4,7 +4,17 @@ from src.body import CelestialBody, Spacecraft
 class GroundStation:
     """Class containing useful behaviors for ground station calculations
     """
-    def __init__(self, name: str, frame: str, lat: float, lon: float, altitude: float, body: CelestialBody, el_mask: float, noise: dict, clock_bias: float = 0):
+    def __init__(self, 
+                 name: str, 
+                 frame: str, 
+                 lat: float, 
+                 lon: float, 
+                 altitude: float, 
+                 body: CelestialBody, 
+                 el_mask: float, 
+                 noise: dict, 
+                 clock_bias: float = 0
+                 ):
 
         self.name = name
         self.frame = frame
