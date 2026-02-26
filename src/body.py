@@ -51,5 +51,6 @@ class Spacecraft(Body):
         self.clock_bias = clock_bias
     
     # Eventual helper function to write to kernel
-    def write_to_kernel(self):
+    def write_to_kernel(self, et: np.ndarray | list[np.ndarray], traj: np.ndarray | list[np.ndarray]):
+        
         pass
