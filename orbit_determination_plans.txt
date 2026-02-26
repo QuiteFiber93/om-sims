@@ -1,0 +1,56 @@
+ORBIT SIMULATION
+========================================================================
+------------------------------------------------------------------------
+Get SPICE Kernels - DONE
+      - From NASA NAIF need planet pck kernels and latest lsk kernel
+      - Will use same time conventions as SPICE
+
+Set up PointMass - DONE
+      - Inherits from GravityModel with the specific conditions that n_max = m_max = 0, so Cnm and Snm are not used
+      - Can overwrite the potential and acceleration functions to not rely on spherical harmonics
+
+Set up Body class - Done, probably not needed until a more polished project
+      - Has attributes GravityModel, Kernel, Radius, GM
+
+Set up ForceModel - Done
+	- Class which accepts Perturbation object arguments
+	- Has a build_dynamics() function which generates a function containing the system dynamics under perturbation. 
+
+Set up spacecraft initial conditions - Done
+      - Useful orbit such as a=6800 km, e=0.01, i=51deg, aop=5deg, raan=20deg
+
+Dynamics function takes in initial conditions - Done
+
+Propagate using DOP853 from scipy.solve_ivp - Done
+
+Model ground station(s)
+      - Determine topocentric location
+      - Possible altitude/elevation masks
+      - Frequency of detections/contact with satellite
+
+Calculate the range/range rate/alt/az measurements at certain time steps - Done
+      - Pseudorange
+      - Instantaneous range rate
+
+Introduce noise for each measurement
+
+------------------------------------------------------------------------
+Two Possibilities
+========================================================================
+------------------------------------------------------------------------
+- Normal Orbit Determination Techniques
+      - Need to gather further equations such as State Transition Matrix in separate dynamics
+      - Equations probably include reduced gravity model
+      - Estimates include drag/srp factors
+      - May also need gradient of measurement functions
+            - Initial Orbit determination method -> Initial Guess for GLSDC algorithm
+            or
+            - IOD method -> Initial Guess for GLSDC algorithm -> GLSDC estimate of first several measurements is initial estimate for EKF
+- NN or PINN for Orbit Determination
+      - Need to develop dataset, network, and loss function
+------------------------------------------------------------------------
+What I've done so far
+========================================================================
+------------------------------------------------------------------------
+- Implemented Spherical Harmonics, Drag and SRP
+------------------------------------------------------------------------
