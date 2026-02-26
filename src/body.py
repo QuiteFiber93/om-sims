@@ -23,7 +23,9 @@ class Spacecraft(Body):
         
         # if id is provided, it must be less than or equal to the current class id
         # this is to prevent 
+        # TODO: Add logic to check if id is already loaded in spice kernels
         if id:
+            
             if id > Spacecraft.id:
                 self.id = id
                 raise UserWarning(f"Provided id: {id} is behind the class id count: Spacecraft.id = {Spacecraft.id} indicating an"\

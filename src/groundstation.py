@@ -1,6 +1,11 @@
 import numpy as np
 from src.body import CelestialBody, Spacecraft
 
+
+# TODO: Try to use spice kernel for ground station and use numpy based methods if kernels not available
+#       -> Have an object variable which determines whether or not a spice kernel is loaded for the ground station
+#       -> Reference this variable in all functions. If loaded, can use purely spice kernels for transformations
+#       -> If not loaded, use spice kernels for transformations to body frame and math for body -> ground station.
 class GroundStation:
     """Class containing useful behaviors for ground station calculations
     """
@@ -13,7 +18,9 @@ class GroundStation:
                  body: CelestialBody, 
                  el_mask: float, 
                  noise: dict, 
-                 clock_bias: float = 0
+                 id: float = None,
+                 clock_bias: float = 0,
+                 use_spice_station = True
                  ):
 
         self.name = name
@@ -25,28 +32,15 @@ class GroundStation:
         self.el_mask = el_mask
         self.clock_bias = clock_bias
         
-    def oneway_range(self, spacecraft: Spacecraft):
+        # TODO: FIX ID LOGIC, Make it more similar to the SC id logic
+        self.id = int( str(self.body.id) + str(id) )
+        self.use_spice_station = use_spice_station
+        
+    def true_range(self, r: np.ndarray) -> np.ndarray:
         pass
     
-    def twoway_range(self, spacecraft: Spacecraft):
+    def true_rangerate(self, r: np.ndarray, v: np.ndarray) -> np.ndarray:
         pass
     
-    def range_rate(self, spacecraft: Spacecraft):
-        pass
-    
-    def elevation(self, spacecraft: Spacecraft):
-        pass
-    
-    def azimuth(self, spacecraft: Spacecraft):
-        pass
-    
-    def generate_measurements(self, epoch: float | np.ndarray[float], spacecraft: Spacecraft, types = "ALL", noise: float | np.ndarray = 0) -> np.ndarray:
-        # TYPES:
-        # OWR -> One Way Range
-        # TWR -> Two Way Range
-        # RR -> Range Rate
-        # EL -> Elevation
-        # AZ -> Azimuth
-        # ALL: ALL
-        # Loops through types of measurements in array to generate measurements for all epochs
+    def measurements(self, et, r, v, observations: list[str]):
         pass
