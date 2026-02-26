@@ -1,0 +1,12 @@
+omwpython/plots
+
+*.pyc
+__pycache__/
+
+# Do not track plots
+plots/
+
+# Large datasets
+datasets/
+*.gfc
+*.bin

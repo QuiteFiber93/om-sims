@@ -1,8 +1,3 @@
-# orbital-mechanics-lessons
+# Orbital Mechanics Simulations
 
-## TODO
-- Universal Variable Formulation and L'Ambert's problem
-- GravityModel.acceleration vectorization and validation tests
-- AerodynamicDrag.acceleration and validation tests
-- Orbit Determination
-- Spacecraft Attitude Dynamics
+The goal of this project is to create code which interacts with NASA's SPICE toolkit to simulate trajectories and produce measurements taking into account factors such as nonspherical gravity, third body perturbations, atmsopheric drag, and solar radiation pressue. 
