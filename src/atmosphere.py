@@ -3,10 +3,14 @@ from src.force import Perturbation
 from src.constants import R_E, R_gas, g0, mu_E
 
 class AtmosphereModel:
+    """Base class for atmosphere models
+    """
     def __init__(self):
         pass
     
 class ConstantAtmosphere(AtmosphereModel):
+    """Class for atmosphere models which are constant density in time and space
+    """
     def __init__(self, density: float, temperature: float):
         self.density = density
         self.temperature = temperature
@@ -15,6 +19,8 @@ class ConstantAtmosphere(AtmosphereModel):
         return self.density
     
 class ExponentialAtmosphere(AtmosphereModel):
+    """Class for atmosphere models following exponential atmsophere
+    """
     def __init__(self):
         pass
     
@@ -22,6 +28,8 @@ class ExponentialAtmosphere(AtmosphereModel):
         pass
     
 class JacchiaRoberts(AtmosphereModel):
+    """Class for atmosphere models following Jacchia-Roberts framework
+    """
     def __init__(self, F107: float = 150.0, F107avg: float = 150.0, Ht: float = 125, rho0: float = 3E-6, M:float = 0.02897, resolution = 1.0):
         """Model not fully implemented
 
@@ -108,10 +116,14 @@ class JacchiaRoberts(AtmosphereModel):
         pass
     
 class NRLMSISE00(AtmosphereModel):
+    """Class for NRLMSISE00 atmosphere model
+    """
     def __init__(self):
         pass
     
 class AerodynamicDrag(Perturbation):
+    """Perturbation class which uses atmosphere models and satellite properties to calculate the aerodynamic drag force on satellites
+    """
     def __init__(self, Cd: float, A: float, atmosphere: AtmosphereModel):
         # I don't know if Cd and A should be part of the the Aerodynamic Drag class or parameters of the acceleration
         # self.Cd = None

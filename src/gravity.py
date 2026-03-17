@@ -219,6 +219,8 @@ class GravityModel(Perturbation):
         return acc_cartesian
                 
 class PointMass(GravityModel):
+    """Special case of Gravity Model where gravity has spherical symmetry
+    """
     def __init__(self, name: str, mu: float, R: float):
         self.name = name
         self.mu = mu

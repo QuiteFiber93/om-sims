@@ -1,10 +1,14 @@
 from src.gravity import GravityModel, PointMass
 import numpy as np
 class Body:
+    """Base class for all relevant entities
+    """
     def __init__(self):
         pass
     
 class CelestialBody(Body):
+    """Class for all gravitationally relevant entities
+    """
     def __init__(self, name: str, id: int, gravity: GravityModel = None, frame: str = "J2000"):
         self.name = name
         self.id = id
@@ -15,6 +19,8 @@ class CelestialBody(Body):
         return f"Celestial Body (Name, ID): {self.name, self.id}"
 
 class Spacecraft(Body):
+    """Class for all artificial/non-gravitationally relevant entities
+    """
     id = -1
     
     def __init__(self, name: str, mass: float, central_body: CelestialBody, frame: str = None, id: int = None, clock_bias: float = 0):

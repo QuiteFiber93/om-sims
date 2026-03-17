@@ -2,6 +2,8 @@ from src.gravity import Perturbation, GravityModel
 import numpy as np
 import spiceypy as spice
 class ForceModel:
+    """Class containing all perturbations/forces relevant to dynamics
+    """
     def __init__(self, *forces, central_body = 'EARTH', frame = 'J2000'):
         for force in forces:
             if not isinstance(force, Perturbation):
@@ -12,7 +14,18 @@ class ForceModel:
         self.frame = frame
     
     def build_dynamics(self):
+        """Builds the dynamics based on the list of forces in self.forces and returns a function to be evaluated during integration
+        """
         def dynamics(t, state):
+            """Function to be evaluated during integration
+
+            Args:
+                t (float): epoch
+                state (np.ndarray): object state at epoch
+
+            Returns:
+                np.ndarray: time derivative of state at epoch
+            """
             # Parses state variable
             r, v = state[:3], state[3:6]
             
