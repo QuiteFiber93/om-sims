@@ -1,6 +1,15 @@
 import numpy as np
 
 def generate_NEU_measurements(state: np.ndarray, *args):
+    """Accepts states as inputs and generates measurements for the valid types defined.
+
+    Args:
+        state (np.ndarray): state of system
+
+    Raises:
+        ValueError: _description_
+        ValueError: _description_
+    """
     valid_measurements = set(["RANGE", "ALT", "AZ", "RANGE RATE"])
     bad_args = [arg for arg in args if arg.upper() not in valid_measurements]
     if bad_args:
