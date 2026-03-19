@@ -567,7 +567,7 @@ def solve_kepler(e: float, M: float = None, tol: float = 1E-10, **kwargs) -> flo
         return invalidArgs
     
     Eguess = kepler_guess(M, e)
-    E = newton(f, Eguess, fprime = fprime, tol = tol)
+    E = newton(f, fprime, Eguess, tol = tol)
     
     return E
 
