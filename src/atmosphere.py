@@ -99,11 +99,10 @@ class JacchiaRoberts(AtmosphereModel):
         
         # Cumulative trapezoidal integration from r_min outward
         # cumulative_trapezoid gives N-1 values; prepend 0 for the base altitude
-        from scipy.integrate import cumulative_trapezoid
-        cum_integral = cumulative_trapezoid(integrand, r_table, initial=0.0)
+        cummulative_integral = cumulative_trapezoid(integrand, r_table, initial=0.0)
         
         # Density at each grid point
-        rho_table = self.rho0 * self.T0 / T_vals * np.exp(-cum_integral)
+        rho_table = self.rho0 * self.T0 / T_vals * np.exp(-cummulative_integral)
         
         # Interpolate in log-space for better accuracy across orders of magnitude
         self._log_rho_interp = interp1d(
@@ -174,11 +173,13 @@ class NRLMSISE00(AtmosphereModel):
 class AerodynamicDrag(Perturbation):
     """Perturbation class which uses atmosphere models and satellite properties to calculate the aerodynamic drag force on satellites
     """
-    def __init__(self, Cd: float, A: float, atmosphere: AtmosphereModel):
+    def __init__(self, Cd: float, A: float, mass: float, atmosphere: AtmosphereModel, frame: str = 'IAU_EARTH'):
         # I don't know if Cd and A should be part of the the Aerodynamic Drag class or parameters of the acceleration
-        # self.Cd = None
-        # self.A = None 
+        self.Cd = Cd
+        self.A = A
+        self.mass = mass
         self.atmosphere = atmosphere
+        self.frame = frame
     
     def acceleration(self, t, r, v):
         rho = self.atmosphere.density()

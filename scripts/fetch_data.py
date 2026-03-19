@@ -27,6 +27,7 @@ if __name__ == '__main__':
     FILES = {
         'lsk/naif0012.tls' : "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/lsk/naif0012.tls",
         "pck/pck00011.tpc": "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/pck00011.tpc",
+        "pck/earth_latest_high_prec.bpc": "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/earth_latest_high_prec.bpc",
         "spk/de442s.bsp": "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de442s.bsp",
         "spk/gm_de440.tpc"  :   "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/gm_de440.tpc",
         "pck/earth_fixed.tf"    :   "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/earth_fixed.tf",
