@@ -88,7 +88,7 @@ class ForceModel:
                         acc += spice.pxform(force.frame, self.frame, t) @ force.acceleration(t, state_rel[:3], state_rel[3:6])
                         
                 else:
-                    # For now, this is a catch all. The only two force types to be impemented are shown above
+                    # For now, this is a catch all. The only force types to be impemented are shown above
                     acc += force.acceleration(t, r, v)
             
             return np.concatenate((v, acc))

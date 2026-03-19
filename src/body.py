@@ -1,7 +1,31 @@
 import numpy as np
 import warnings
+import spiceypy as spice
 
 from src.gravity import GravityModel, PointMass
+
+def _get_loaded_spk_bodies() -> set:
+    """Returns the set of all body id's currently loaded by SPK kernels
+
+    Returns:
+        set: Set of all body id's loaded by spice kernels
+    """
+    # Variable to contain all of the loaded ids
+    body_ids = set()
+    
+    # Total number of spk kernels loaded in SPICE
+    n_spks_loaded = spice.ktotal('SPK')
+    
+    # Now looping through each and adding listed id's
+    for n in range(n_spks_loaded):
+        
+        # kdata will return the file name of loaded spk along with other info that won't be used
+        filepath, _, _, _ = spice.kdata(n, 'spk')
+        
+        
+        
+    pass
+
 class Body:
     """Base class for all relevant entities
     """
