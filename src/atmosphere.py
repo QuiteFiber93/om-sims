@@ -181,5 +181,6 @@ class AerodynamicDrag(Perturbation):
         self.atmosphere = atmosphere
         self.frame = frame
     
-    def acceleration(self, t, r, v):
-        rho = self.atmosphere.density()
+    def acceleration(self, t: float, r: np.ndarray, v: np.ndarray):
+        
+        return -0.5 * self.atmosphere(t, r) * self.Cd * self.A / self.mass * np.linalg.norm(v) * v

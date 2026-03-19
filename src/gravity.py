@@ -224,7 +224,7 @@ class GravityModel(Perturbation):
 class PointMass(GravityModel):
     """Special case of Gravity Model where gravity has spherical symmetry
     """
-    def __init__(self, name: str, mu: float, R: float):
+    def __init__(self, name: str, mu: float, R: float, frame: str = "IAU_EARTH"):
         self.name = name
         self.mu = mu
         self.R = R
@@ -232,6 +232,7 @@ class PointMass(GravityModel):
         self.m_max = 0
         self.C = np.array([[1]])
         self.S = np.array([[0]])
+        self.frame = frame
         
     def potential(self, t: float, r: np.ndarray, v:np.ndarray = None):
         return -self.mu / np.linalg.norm(r)

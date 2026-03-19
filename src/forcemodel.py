@@ -1,6 +1,9 @@
-from src.gravity import Perturbation, GravityModel
 import numpy as np
 import spiceypy as spice
+
+from src.force import Perturbation
+from src.gravity import GravityModel
+from src.atmosphere import AerodynamicDrag
 class ForceModel:
     """Class containing all perturbations/forces relevant to dynamics
     """
@@ -14,7 +17,8 @@ class ForceModel:
         self.frame = frame
     
     def build_dynamics(self):
-        """Builds the dynamics based on the list of forces in self.forces and returns a function to be evaluated during integration
+        """Builds the dynamics based on the list of forces in self.forces and returns a function to be evaluated during integration.
+        The dynamics() function has arguments: t (float, the current epoch) and state (np.ndarray, state variables assumed to be expressed in frame of ForceModel.frame).
         """
         def dynamics(t, state):
             """Function to be evaluated during integration
@@ -33,31 +37,58 @@ class ForceModel:
             acc = np.zeros_like(v)
             
             for force in self.forces:
+                
+                # Checking to see if a transformation needs to be made to correct position
+                
                 # Applies acceleration based on type of Perturbation being used
                 if isinstance(force, GravityModel):
                     
                     # Behavior changes slightly based on whether a gravity model is a third-body perturbation
                     if force.name == self.central_body:
+                        
+                        # Relative position is just current position                    
                         relative_position = r
-                        body_pos = np.zeros(3)
+
+                    # We are now dealing with a third-body effect
                     else:
+                        
+                        # Relative position is with respect to a different body
+                        # So, we need to get the position of third body in this frame
+                        # Assumes force.name is the same as the body name in SPICE kernel
                         body_pos = spice.spkpos(force.name, t, self.frame, "NONE", self.central_body)[0]
+                                            
                         relative_position = r - body_pos
                     
-                    # Gravity model and required frame changes based on PointMass vs Spherical Harmonics
-                    if force.n_max == 0:
+                    # If the force accepts inputs in a different frame, we need to rotate the current position accordingly
+                    # We don't need to rotate velocity because it is not used in gravity model
+                    if force.frame == self.frame:
                         acc += force.acceleration(t, relative_position, v)
                         
-                        if force.name != self.central_body: 
-                            acc -= force.mu * body_pos / np.linalg.norm(body_pos)**3
-                        
                     else:
-                        body_frame = "IAU_" + force.name
-                        R = spice.pxform(self.frame, body_frame, t)
+                        R = spice.pxform(self.frame, force.frame, t)
                         relative_position = R @ relative_position
+                        
+                        # Need to rotate it back to the correct frame
                         acc += R.T @ force.acceleration(t, relative_position, v)
-                
+                        
+                elif isinstance(force, AerodynamicDrag):
+                    # This does not need to check relative position.
+                    # Because atmospheric drag should really only matter if we are talking about the primary body
+                    # So, I need to either change the logic for handling drag so it is easier to connect to other bodies
+                    # Or assume relative position is being passed anyways
+                    
+                    # Check to see if position and velocity are in the correct frame
+                    # if not, need to perform a rotation to the correct frame
+                    if force.frame == self.frame:
+                        acc += force.acceleration(t, r, v)
+                    
+                    else:
+                        R = spice.sxform(self.frame, force.frame, t)
+                        state_rel = R @ state
+                        acc += R.T @ force.acceleration(t, state_rel[:3], state_rel[3:6])
+                        
                 else:
+
                     acc += force.acceleration(t, r, v)
             
             return np.concatenate((v, acc))
