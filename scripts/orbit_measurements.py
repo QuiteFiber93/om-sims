@@ -11,6 +11,7 @@ from src.forcemodel import ForceModel
 from src.measurements import generate_NEU_measurements
 from src.body import CelestialBody, Spacecraft
 from src.orbitview import OrbitView3d
+from src.atmosphere import ExponentialAtmosphere, AerodynamicDrag
 
 if __name__ == "__main__":
     
@@ -50,8 +51,11 @@ if __name__ == "__main__":
     
     SC = Spacecraft("SC-001", mass = 1, central_body = EARTH)
     
+    EARTH_ATM = ExponentialAtmosphere(6E-13, 500, 50)
+    EARTH_DRAG = AerodynamicDrag(2, 5E-6, 100, EARTH_ATM)
+    
     # Accumulating forces and creating dynamics
-    forcemodel  = ForceModel(EARTH.gravity, MOON.gravity, central_body="EARTH", frame = EARTH.frame)
+    forcemodel  = ForceModel(EARTH.gravity, MOON.gravity, EARTH_DRAG, central_body="EARTH", frame = EARTH.frame)
     dynamics    = forcemodel.build_dynamics()
     
     #initial conditions
@@ -75,6 +79,7 @@ if __name__ == "__main__":
     
     # Convert sc state to DSS-14 TOPO frame
     relative_state = np.zeros_like(sc_state)
+    ets = sol.t
     for k, et in enumerate(ets):
         R = spice.sxform("J2000", ground_station_frame, et)
         relative_state[:, k] = R @ (sc_state[:, k] - spice.spkezr(ground_station, et, "J2000", "NONE", "EARTH")[0])
