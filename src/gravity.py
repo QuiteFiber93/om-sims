@@ -7,7 +7,7 @@ class GravityModel(Perturbation):
     """
     Class to create a gravity model based on physical parameters from a given body
     """
-    def __init__(self, name: str, mu: float, R: float, n_max: int, m_max: int, C: np.ndarray, S: np.ndarray):
+    def __init__(self, name: str, mu: float, R: float, n_max: int, m_max: int, C: np.ndarray, S: np.ndarray, frame: str = 'IAU_EARTH'):
         """Initializes object for Gravity Model Class
 
         Args:
@@ -18,6 +18,7 @@ class GravityModel(Perturbation):
             m_max (int): M
             C (np.ndarray): C coefficients for Legendre Polynomials (2d array)
             S (np.ndarray): S coefficients for Associated Legendre Polynomials (2darray)
+            frame (str): reference frame for all calculations
         
         Returns:
             None
@@ -45,6 +46,8 @@ class GravityModel(Perturbation):
         
         self.C = C
         self.S = S
+        
+        self.frame = frame
             
     @classmethod
     def from_coefficients(cls, name: str, mu: float, R: float, coefficients: dict) -> 'GravityModel':
