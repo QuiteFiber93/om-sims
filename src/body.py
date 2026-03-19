@@ -1,5 +1,7 @@
-from src.gravity import GravityModel, PointMass
 import numpy as np
+import warnings
+
+from src.gravity import GravityModel, PointMass
 class Body:
     """Base class for all relevant entities
     """
@@ -30,7 +32,7 @@ class Spacecraft(Body):
         # if id is provided, it must be less than or equal to the current class id
         # this is to prevent 
         # TODO: Add logic to check if id is already loaded in spice kernels
-        if id:
+        if id is not None:
             
             if id > Spacecraft.id:
                 self.id = id
