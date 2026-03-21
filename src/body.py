@@ -22,9 +22,15 @@ def _get_loaded_spk_bodies() -> set:
         # kdata will return the file name of loaded spk along with other info that won't be used
         filepath, _, _, _ = spice.kdata(n, 'spk')
         
+        # Attempts to read the file and updates the set accordingly
+        try:
+            ids = spice.spkobj(filepath)
+            body_ids.update(list(ids))
+            
+        except spice.SpiceyError:
+            continue
         
-        
-    pass
+    return body_ids
 
 class Body:
     """Base class for all relevant entities
@@ -33,7 +39,7 @@ class Body:
         pass
     
 class CelestialBody(Body):
-    """Class for all gravitationally relevant entities
+    """Class for all gravitationally significant entities
     """
     def __init__(self, name: str, id: int, gravity: GravityModel = None, frame: str = "J2000"):
         self.name = name
@@ -43,6 +49,29 @@ class CelestialBody(Body):
         
     def __repr__(self):
         return f"Celestial Body (Name, ID): {self.name, self.id}"
+    
+    @classmethod
+    def from_naif(cls, name: str, frame: str = None, gravity: GravityModel = None):
+        
+        # Converts name to upper for consistency
+        name = name.upper()
+        
+        # Searches loaded spice kernels to check for name in list of SPICE IDs
+        body_id, found_id = spice.bodn2c(name)
+        
+        # If the name is not found in the list of IDs, there is an issue and we can't continue
+        if not found_id:
+            raise ValueError(f"Could not resolve '{name}' to a NAIF body ID. ")
+        
+        # If a frame is not provided, the basic IAU frame will be attempted
+        if frame is None:
+            frame = f"IAU_{name.upper()}"
+        
+        # If a gravity model is not loaded already, use a point mass model
+        if gravity is None:
+            pass
+        
+        return cls(name = name, id = body_id, gravity = gravity, frame = frame)
 
 class Spacecraft(Body):
     """Class for all artificial/non-gravitationally relevant entities
