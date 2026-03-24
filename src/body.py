@@ -52,16 +52,24 @@ class CelestialBody(Body):
     
     @classmethod
     def from_naif(cls, name: str, frame: str = None, gravity: GravityModel = None):
+        """Builds a CelestailBody object using SPICE kernels
+
+        Args:
+            name (str): Name of body as defined in SPICE kernels.
+            frame (str, optional): Name of frame as defined in SPICE kernels. If NONE, frame is "IAU_" + name.upper(). Defaults to None.
+            gravity (GravityModel, optional): Gravity model to be used for calculations. If NONE, an attempt is made to create a PointMass 
+            using information loaded in SPICE. Defaults to None.
+
+        Raises:
+            ValueError: _description_
+
+        Returns:
+            _type_: _description_
+        """
         
         # Converts name to upper for consistency
         name = name.upper()
         
-        # Searches loaded spice kernels to check for name in list of SPICE IDs
-        body_id, found_id = spice.bodn2c(name)
-        
-        # If the name is not found in the list of IDs, there is an issue and we can't continue
-        if not found_id:
-            raise ValueError(f"Could not resolve '{name}' to a NAIF body ID. ")
         
         # If a frame is not provided, the basic IAU frame will be attempted
         if frame is None:
@@ -69,8 +77,32 @@ class CelestialBody(Body):
         
         # If a gravity model is not loaded already, use a point mass model
         if gravity is None:
-            pass
-        
+            mu = 0
+            R = 0
+            
+            # Searches loaded spice kernels to check for name in list of SPICE IDs
+            body_id, found_id = spice.bodn2c(name)
+            
+            # If the name is not found in the list of IDs, there is an issue and we can't continue
+            if not found_id:
+                raise ValueError(f"Could not resolve '{name}' to a NAIF body ID. ")
+            
+            # tries to retrieve GM from spice
+            try:
+                _, mu = spice.bodvcd(body_id, "GM", 1)[0]
+            
+            except Exception:
+                warnings.warn(f"GM not found in kernel pool for '{name}' (ID {code}). ", UserWarning, stacklevel = 3)   
+                
+            # tries to retrieve radii from spice
+            try:
+                _, R = spice.bodvcd(body_id, "RADII", 3)[0]
+                
+            except Exception:
+                warnings.warn(f"RADII not found in kernel pool for '{name}' (ID {code}). ", UserWarning, stacklevel = 3)
+            
+            gravity = PointMass(name, mu, R, frame)
+                    
         return cls(name = name, id = body_id, gravity = gravity, frame = frame)
 
 class Spacecraft(Body):
