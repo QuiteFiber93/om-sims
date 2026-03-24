@@ -46,7 +46,7 @@ class CelestialBody(Body):
         self.id = id
         self.gravity = gravity if gravity else PointMass("", 0, 0)
         self.frame = frame
-        self.R = gravity.R
+        self.R = self.gravity.R
         
     def __repr__(self):
         return f"Celestial Body (Name, ID): {self.name, self.id}"
@@ -71,36 +71,36 @@ class CelestialBody(Body):
         # Converts name to upper for consistency
         name = name.upper()
         
-        
         # If a frame is not provided, the basic IAU frame will be attempted
         if frame is None:
             frame = f"IAU_{name.upper()}"
+        
+        # Searches loaded spice kernels to check for name in list of SPICE IDs
+        body_id, found_id = spice.bodn2c(name)
+        
+        # If the name is not found in the list of IDs, there is an issue and we can't continue
+        if not found_id:
+            raise ValueError(f"Could not resolve '{name}' to a NAIF body ID. ")
         
         # If a gravity model is not loaded already, use a point mass model
         if gravity is None:
             mu = 0
             R = 0
             
-            # Searches loaded spice kernels to check for name in list of SPICE IDs
-            body_id, found_id = spice.bodn2c(name)
-            
-            # If the name is not found in the list of IDs, there is an issue and we can't continue
-            if not found_id:
-                raise ValueError(f"Could not resolve '{name}' to a NAIF body ID. ")
-            
             # tries to retrieve GM from spice
             try:
-                _, mu = spice.bodvcd(body_id, "GM", 1)[0]
+                _, GM = spice.bodvcd(body_id, "GM", 1)
+                mu = GM[0]
             
             except Exception:
-                warnings.warn(f"GM not found in kernel pool for '{name}' (ID {code}). ", UserWarning, stacklevel = 3)   
+                warnings.warn(f"GM not found in kernel pool for '{name}' (ID {body_id}). ", UserWarning, stacklevel = 3)   
                 
             # tries to retrieve radii from spice
             try:
-                _, R = spice.bodvcd(body_id, "RADII", 3)[0]
-                
+                _, radii = spice.bodvcd(body_id, "RADII", 3)
+                R = radii[0]
             except Exception:
-                warnings.warn(f"RADII not found in kernel pool for '{name}' (ID {code}). ", UserWarning, stacklevel = 3)
+                warnings.warn(f"RADII not found in kernel pool for '{name}' (ID {body_id}). ", UserWarning, stacklevel = 3)
             
             gravity = PointMass(name, mu, R, frame)
                     
@@ -134,10 +134,10 @@ class Spacecraft(Body):
             
             if id > Spacecraft.id:
                 self.id = id
-                raise warnings.warn(f"Provided id: {id} is behind the class id count: "
-                                    f"Spacecraft.id = {Spacecraft.id} indicating an"
-                                    "id overlap between two Spacecraft. Consider another "
-                                    "id because this may cause unintended behavior. ")
+                warnings.warn(f"Provided id: {id} is behind the class id count: "
+                            f"Spacecraft.id = {Spacecraft.id} indicating an"
+                            "id overlap between two Spacecraft. Consider another "
+                            "id because this may cause unintended behavior. ")
                 
             elif id == Spacecraft.id:
                 self.id = id
@@ -237,9 +237,8 @@ class Spacecraft(Body):
         
         if segment_id is None:
             segment_id = f"SPK_{self.name}"
-        # Why is this next bit here?
-        # Won't it throw an error?
-        # segment_id = segment_id[:40]
+        # SPICE needs to truncate segment id at 40 characters
+        segment_id = segment_id[:40]
         
         handle = spice.spkopn(filepath, f"SPK for {self.name}", 0)
         
