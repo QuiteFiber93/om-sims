@@ -127,7 +127,7 @@ class Spacecraft(Body):
         if id is not None:
             
             if id in loaded_ids:
-                raise ValueError(f"Requested id {id} already exists in a loaded SPK kernel."
+                raise ValueError(f"Requested id {id} already exists in a loaded SPK kernel. "
                     "If you are modeling an existing spacecraft, use "
                     "Spacecraft.from_naif() instead. Otherwise, choose a "
                     "different id or unload the conflicting kernel.")
@@ -135,7 +135,7 @@ class Spacecraft(Body):
             if id > Spacecraft.id:
                 self.id = id
                 warnings.warn(f"Provided id: {id} is behind the class id count: "
-                            f"Spacecraft.id = {Spacecraft.id} indicating an"
+                            f"Spacecraft.id = {Spacecraft.id} indicating an "
                             "id overlap between two Spacecraft. Consider another "
                             "id because this may cause unintended behavior. ")
                 
