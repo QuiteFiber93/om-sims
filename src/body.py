@@ -46,12 +46,13 @@ class CelestialBody(Body):
         self.id = id
         self.gravity = gravity if gravity else PointMass("", 0, 0)
         self.frame = frame
+        self.R = gravity.R
         
     def __repr__(self):
         return f"Celestial Body (Name, ID): {self.name, self.id}"
     
     @classmethod
-    def from_naif(cls, name: str, frame: str = None, gravity: GravityModel = None):
+    def from_spice(cls, name: str, frame: str = None, gravity: GravityModel = None):
         """Builds a CelestailBody object using SPICE kernels
 
         Args:
@@ -114,26 +115,51 @@ class Spacecraft(Body):
         self.name = name
         self.mass = mass
         
-        # if id is provided, it must be less than or equal to the current class id
-        # this is to prevent 
-        # TODO: Add logic to check if id is already loaded in spice kernels
+        # Retrieving IDs loaded in SPICE to ensure no conflicting
+        try:
+            loaded_ids = _get_loaded_spk_bodies()
+            
+        except Exception:
+            loaded_ids = set()
+    
+        # a custom ID is being requested
+        # need to ensure there is no conflicting IDs
         if id is not None:
+            
+            if id in loaded_ids:
+                raise ValueError(f"Requested id {id} already exists in a loaded SPK kernel."
+                    "If you are modeling an existing spacecraft, use "
+                    "Spacecraft.from_naif() instead. Otherwise, choose a "
+                    "different id or unload the conflicting kernel.")
             
             if id > Spacecraft.id:
                 self.id = id
-                raise UserWarning(f"Provided id: {id} is behind the class id count: Spacecraft.id = {Spacecraft.id} indicating an"\
-                                  "id overlap between two Spacecraft. Consider another id because this may cause unintended behavior. ")
+                raise warnings.warn(f"Provided id: {id} is behind the class id count: "
+                                    f"Spacecraft.id = {Spacecraft.id} indicating an"
+                                    "id overlap between two Spacecraft. Consider another "
+                                    "id because this may cause unintended behavior. ")
+                
             elif id == Spacecraft.id:
                 self.id = id
                 Spacecraft.id = Spacecraft.id - 1
+                
             elif id < Spacecraft.id:
                 self.id = id
                 Spacecraft.id = id - 1
+                
         # If no id is provided to the spacecraft, then the class id is used and iterated
         # Follows naif convention that negative integers are spacecraft
         else:
-            id = Spacecraft.id
-            self.id = id
+            # Checks to make sure the auto-assigned id is not in loaded ids either
+            # If auto-assigned id is in loaded id, increment until id is clear
+            while Spacecraft.id in loaded_ids:
+                Spacecraft.id -= 1
+                
+                # This is just to prevent issues with infinite loops in runtime
+                if Spacecraft.id < -100000:
+                    break
+                
+            self.id = Spacecraft.id
             Spacecraft.id = Spacecraft.id - 1
             
         # If no frame is provided, uses default frame of central body
@@ -142,8 +168,98 @@ class Spacecraft(Body):
         
         # Clock bias for communications
         self.clock_bias = clock_bias
-    
-    # Eventual helper function to write to kernel
-    def write_to_kernel(self, et: np.ndarray | list[np.ndarray], traj: np.ndarray | list[np.ndarray]):
         
-        pass
+    @classmethod
+    def from_spice(
+        cls,
+        name: str,
+        mass: float,
+        central_body: CelestialBody,
+        frame: str = None,
+        id: int = None,
+        clock_bias: float = 0
+    ):
+        
+        name = name.upper()
+        
+        if id is None:
+            sc_id, id_found = spice.bodn2c(name)
+
+            if not id_found:
+                raise ValueError(f"Could not resolve '{name}' to a NAIF body ID.")
+            
+            id = sc_id
+            
+        # Using the __new__() to bypass the SPICE ID check of the __init__
+        # This does mean each of the object properties are set individually
+        sc = object.__new__(cls)
+        sc.name = name
+        sc.mass = mass
+        sc.id = id
+        sc.central_body = central_body
+        sc.frame = frame if frame else central_body.frame
+        sc.clock_bias = clock_bias
+        
+        return sc
+        
+    # Helper function writes a Spacecraft's trajectory to a Type 9 SPK
+    def write_to_kernel(self, 
+                        et: np.ndarray | list[np.ndarray], 
+                        traj: np.ndarray | list[np.ndarray], 
+                        filepath: str = None, 
+                        degree: int = 7, 
+                        segment_id: str = None
+                        ):
+        
+        n = len(et)
+        
+        if n < 2:
+            raise ValueError(f"At least two epochs are needed to write to Kernel. Recieved {n} epochs.")
+        
+        if traj.shape != (n, 6):
+            raise ValueError(f"Trajectory must have shape ({n}, 6). traj has shape {traj.shape}.")
+        
+        et_strictly_increasing = all(i < j for i,j in zip(et[:-1], et[1:]))
+        if not et_strictly_increasing:
+            raise ValueError("Epochs of et must be strictly increasing.")
+        
+        if degree < 1 or degree > 27:
+            raise ValueError("SPK Type 9 requires degree to be between 1 and 27.")
+        
+        if degree % 2 == 0:
+            raise ValueError("SPK Type 9 requires degree to be odd.")
+        
+        if degree >= n:
+            raise ValueError("Interpolation requires degree to be less than number of epochs {n}.")
+        
+        if filepath is None:
+            filepath = self.name.replace(" ", "_") + f"_{self.id}.bsp"
+        
+        if segment_id is None:
+            segment_id = f"SPK_{self.name}"
+        # Why is this next bit here?
+        # Won't it throw an error?
+        # segment_id = segment_id[:40]
+        
+        handle = spice.spkopn(filepath, f"SPK for {self.name}", 0)
+        
+        try:
+            spice.spkw09(
+                handle,
+                self.id,
+                self.central_body.id,
+                self.frame,
+                et[0],
+                et[-1],
+                segment_id,
+                degree,
+                n,
+                traj.tolist(),
+                et.tolist()
+            )
+            
+        except Exception:
+            spice.spkcls(handle)
+            raise
+            
+        spice.spkcls(handle)
