@@ -1,6 +1,9 @@
 import numpy as np
 from scipy.integrate import cumulative_trapezoid
 from scipy.interpolate import interp1d
+from datetime import datetime, timedelta
+from nrlmsise00 import msise_flat
+import spiceypy as spice
 
 from src.force import Perturbation
 from src.constants import R_E, R_gas, g0, mu_E
@@ -254,14 +257,44 @@ class JacchiaRoberts(AtmosphereModel):
 class NRLMSISE00(AtmosphereModel):
     """Class for NRLMSISE00 atmosphere model
     """
-    def __init__(self):
-        pass
+    def __init__(self, F107: float = 150.0, F107avg: float = 150.0, Ap: float = 4.0):
+        """
+
+        Args:
+            F107 (float, optional): Daily 10.7 cm solar radio flux for the previous day. Defaults to 150.0.
+            F107avg (float, optional): 81-day centered average of F10.7. Defaults to 150.0.
+            Ap (float, optional): Daily geomagnetic Ap index. Defaults to 4.0.
+        """
+        self.F107 = F107
+        self.F107avg = F107avg
+        self.Ap = Ap
     
-    def density(self, t: float, pos: np.ndarray):
-        pass
+    def density(self, t: float, pos: np.ndarray) -> float:
+        """Returns atmospheric density at a given time and position.
+        
+        Calls NRLMSISE-00 via msise_flat(), which returns total mass
+        density in g/cm^3. This function converts this into kg/km^3 on output.
+
+        Args:
+            t (float): ephemeris time
+            pos (np.ndarray): Position vector in ECEF frame (km).
+
+        Returns:
+            float: Density (kg/m^3)
+        """
+        dt = spice.et2datetime(t)
+        
+        # Earth oblateness
+        f = 1.0 / 298.257223563
+        
+        # Getting geodetic coords from spicepy
+        lon, lat, altitude = spice.recgeo(pos, R_E, f)
+        
+        rho = msise_flat(dt, altitude, np.degrees(lat), np.degrees(lon), self.F107avg, self.F107, self.Ap)[5]*1E12
+        
+        return float(rho)
     
-    def __call__(self, t: float, pos: np.ndarray):
-        r = np.linal.norm(pos)
+    def __call__(self, t: float, pos: np.ndarray) -> float:
         return self.density(t, pos)
     
 class AerodynamicDrag(Perturbation):
