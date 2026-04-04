@@ -113,15 +113,16 @@ class ForceModel:
                 q = state[state_def["quaternion"]]
                 omega = state[state_def["angular_velocity"]]
                 
-                # Quaternion kinematics: dq/dt = 0.5 * q ⊗ omega
-                # Using scalar-last convention: q = [q1, q2, q3, q0]
-                q0, q1, q2, q3 = q[3], q[0], q[1], q[2]
+                # Quaternion kinematics: dq/dt = 0.5 * q ⊗ [0, omega]
+                # Scalar-first convention: q = [w, x, y, z] (matches numpy-quaternion)
+                w, x, y, z = q[0], q[1], q[2], q[3]
+                wx, wy, wz = omega[0], omega[1], omega[2]
                 
                 dstate[state_def["quaternion"]] = 0.5 * np.array([
-                     q0 * omega[0] - q3 * omega[1] + q2 * omega[2],
-                     q3 * omega[0] + q0 * omega[1] - q1 * omega[2],
-                    -q2 * omega[0] + q1 * omega[1] + q0 * omega[2],
-                    -q1 * omega[0] - q2 * omega[1] - q3 * omega[2],
+                    -x*wx - y*wy - z*wz,
+                     w*wx + y*wz - z*wy,
+                     w*wy + z*wx - x*wz,
+                     w*wz + x*wy - y*wx,
                 ])
                 
                 # Angular velocity dynamics are left as zero for now.

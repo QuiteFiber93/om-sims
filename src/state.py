@@ -1,5 +1,6 @@
-from collections import OrderedDict
 import numpy as np
+from collections import OrderedDict
+
 
 class StateDefinition:
     """Defines the layout of a state vector as an ordered collection of named blocks.
@@ -12,7 +13,7 @@ class StateDefinition:
         if blocks is not None:
             for name, size in blocks:
                 self.add(name, size)
-                
+        
     @property
     def size(self) -> int:
         """Total number of elements in the state vector."""
@@ -24,7 +25,7 @@ class StateDefinition:
         return list(self._slices.keys())
     
     def add(self, name: str, size: int) -> 'StateDefinition':
-        """Add a new block to the state definition. Blocks are appended contiguously in insertion order.
+        """Add a new block to the state definition.
         
         Args:
             name (str): Unique name for this block
@@ -48,15 +49,6 @@ class StateDefinition:
     
     def __getitem__(self, name: str) -> slice:
         """Returns a slice for the named block, for use in array indexing.
-        
-        Args:
-            name (str): Block name
-            
-        Returns:
-            slice: Slice object spanning the block's indices
-            
-        Raises:
-            KeyError: If block name not found
         """
         if name not in self._slices:
             raise KeyError(f"Block '{name}' not found. Available blocks: {self.blocks}")
@@ -75,10 +67,8 @@ class StateDefinition:
         """Build a state vector from a dictionary of block names to values.
         
         Args:
-            values (dict): Mapping of block names to arrays/scalars.
-                           Each value must match the corresponding block size.
-                           Blocks not present in the dict are left as zero.
-                           
+            values (dict): Mapping of block names to arrays/scalars. Each value must match the corresponding block size.
+            
         Returns:
             np.ndarray: Assembled state vector
         """
@@ -107,10 +97,7 @@ class StateDefinition:
     
     def derivative_map(self, mapping: dict) -> dict:
         """Defines which block's derivative fills which slot in the state derivative.
-        
-        For dynamics, the time derivative of one block often fills a different block's
-        slot. For example, velocity is the derivative of position, so the velocity 
-        values fill the position slot of the derivative vector.
+    
         
         Args:
             mapping (dict): Maps block names to their derivative block names.
@@ -135,7 +122,10 @@ class StateDefinition:
         for name, s in self._slices.items():
             lines.append(f"  [{s.start}:{s.stop}] {name} ({s.stop - s.start})")
         return "\n".join(lines)
-    
+
+
+# ---- Factory functions for common configurations ---- #
+
 def translational_state() -> StateDefinition:
     """Creates a standard 6-state translational state definition.
     
@@ -145,14 +135,14 @@ def translational_state() -> StateDefinition:
         ("position", 3),
         ("velocity", 3),
     ])
- 
- 
+
+
 def translational_attitude_state() -> StateDefinition:
     """Creates a 13-state translational + attitude state definition.
     
     Layout: [position(3), velocity(3), quaternion(4), angular_velocity(3)]
     
-    The quaternion is scalar-last: [q1, q2, q3, q0] where q0 is the scalar part.
+    The quaternion is scalar-first: [w, x, y, z] matching numpy-quaternion convention.
     """
     return StateDefinition([
         ("position", 3),
@@ -160,8 +150,8 @@ def translational_attitude_state() -> StateDefinition:
         ("quaternion", 4),
         ("angular_velocity", 3),
     ])
- 
- 
+
+
 def estimation_state(include_Cd: bool = False, include_Cr: bool = False) -> StateDefinition:
     """Creates a state definition for estimation (EKF) use.
     
