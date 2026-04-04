@@ -4,11 +4,16 @@ import spiceypy as spice
 from src.force import Perturbation
 from src.gravity import GravityModel
 from src.atmosphere import AerodynamicDrag
+from src.state import StateDefinition, translational_state
 
 class ForceModel:
-    """Class containing all perturbations/forces relevant to dynamics
+    """Class containing all perturbations/forces relevant to dynamics.
+    
+    Accepts an optional StateDefinition to support flexible state vector layouts.
+    If no StateDefinition is provided, defaults to the standard 6-state 
+    [position(3), velocity(3)] layout for backward compatibility.
     """
-    def __init__(self, *forces, central_body = 'EARTH', frame = 'J2000'):
+    def __init__(self, *forces, central_body='EARTH', frame='J2000', state_def: StateDefinition = None):
         for force in forces:
             if not isinstance(force, Perturbation):
                 raise ValueError(f"{force} is not of type Perturbation.")
@@ -16,13 +21,33 @@ class ForceModel:
         self.forces = list(forces)
         self.central_body = central_body
         self.frame = frame
+        
+        # Use provided state definition or default to translational
+        self.state_def = state_def if state_def is not None else translational_state()
     
-    def build_dynamics(self):
-        """Builds the dynamics based on the list of forces in self.forces and returns a function to be evaluated during integration.
-        The dynamics() function has arguments: t (float, the current epoch) and state (np.ndarray, state variables assumed to be expressed in frame of ForceModel.frame).
+    def build_dynamics(self, controller=None):
+        """Builds the dynamics based on the list of forces in self.forces and returns 
+        a function to be evaluated during integration.
+        
+        The dynamics() function has arguments: 
+            t (float): the current epoch
+            state (np.ndarray): state variables, layout defined by self.state_def
+            
+        Args:
+            controller (callable, optional): A function with signature (t, state, state_def) -> np.ndarray
+                that returns a control acceleration vector (3,). If None, no control is applied.
+                
+        Returns:
+            callable: dynamics function compatible with scipy.integrate.solve_ivp
         """
+        # Cache references for closure performance
+        state_def = self.state_def
+        forces = self.forces
+        central_body = self.central_body
+        frame = self.frame
+        
         def dynamics(t, state):
-            """Function to be evaluated during integration
+            """Function to be evaluated during integration.
 
             Args:
                 t (float): epoch
@@ -31,67 +56,79 @@ class ForceModel:
             Returns:
                 np.ndarray: time derivative of state at epoch
             """
-            # Parses state variable
-            r, v = state[:3], state[3:6]
+            # Parse state using StateDefinition
+            r = state[state_def["position"]]
+            v = state[state_def["velocity"]]
             
-            # Creates acceleration with the same dimensions as v
-            acc = np.zeros_like(v)
+            # Initialize full derivative vector
+            dstate = np.zeros(state_def.size)
             
-            for force in self.forces:
+            # d(position)/dt = velocity
+            dstate[state_def["position"]] = v
+            
+            # Accumulate acceleration from all forces
+            acc = np.zeros(3)
+            
+            for force in forces:
                 
-                # Checking to see if a transformation needs to be made to correct position
-                
-                # Applies acceleration based on type of Perturbation being used
                 if isinstance(force, GravityModel):
                     
-                    # Behavior changes slightly based on whether a gravity model is a third-body perturbation
-                    if force.name == self.central_body:
-                        
-                        # Relative position is just current position                    
+                    if force.name == central_body:
                         relative_position = r
-
-                    # We are now dealing with a third-body effect
                     else:
-                        
-                        # Relative position is with respect to a different body
-                        # So, we need to get the position of third body in this frame
-                        # Assumes force.name is the same as the body name in SPICE kernel
-                        body_pos = spice.spkpos(force.name, t, self.frame, "NONE", self.central_body)[0]
-                                            
+                        body_pos = spice.spkpos(force.name, t, frame, "NONE", central_body)[0]
                         relative_position = r - body_pos
                     
-                    # If the force accepts inputs in a different frame, we need to rotate the current position accordingly
-                    # We don't need to rotate velocity because it is not used in gravity model
-                    if force.frame == self.frame:
+                    if force.frame == frame:
                         acc += force.acceleration(t, relative_position, v)
-                        
                     else:
-                        R = spice.pxform(self.frame, force.frame, t)
+                        R = spice.pxform(frame, force.frame, t)
                         relative_position = R @ relative_position
-                        
-                        # Need to rotate it back to the correct frame
                         acc += R.T @ force.acceleration(t, relative_position, v)
                         
                 elif isinstance(force, AerodynamicDrag):
-                    # This does not need to check relative position.
-                    # Because atmospheric drag should really only matter if we are talking about the primary body
-                    # So, I need to either change the logic for handling drag so it is easier to connect to other bodies
-                    # Or assume relative position is being passed anyways
                     
-                    # Check to see if position and velocity are in the correct frame
-                    # if not, need to perform a rotation to the correct frame
-                    if force.frame == self.frame:
+                    if force.frame == frame:
                         acc += force.acceleration(t, r, v)
-                    
                     else:
-                        R = spice.sxform(self.frame, force.frame, t)
-                        state_rel = R @ state
-                        acc += spice.pxform(force.frame, self.frame, t) @ force.acceleration(t, state_rel[:3], state_rel[3:6])
+                        # Need full 6-state transform for drag (velocity matters)
+                        sv = np.concatenate((r, v))
+                        R6 = spice.sxform(frame, force.frame, t)
+                        state_rel = R6 @ sv
+                        R3 = spice.pxform(force.frame, frame, t)
+                        acc += R3 @ force.acceleration(t, state_rel[:3], state_rel[3:6])
                         
                 else:
-                    # For now, this is a catch all. The only force types to be impemented are shown above
                     acc += force.acceleration(t, r, v)
             
-            return np.concatenate((v, acc))
+            # Apply control input if provided
+            if controller is not None:
+                acc += controller(t, state, state_def)
+            
+            # d(velocity)/dt = acceleration
+            dstate[state_def["velocity"]] = acc
+            
+            # --- Attitude kinematics and dynamics (if present) ---
+            if state_def.has("quaternion") and state_def.has("angular_velocity"):
+                q = state[state_def["quaternion"]]
+                omega = state[state_def["angular_velocity"]]
+                
+                # Quaternion kinematics: dq/dt = 0.5 * q ⊗ omega
+                # Using scalar-last convention: q = [q1, q2, q3, q0]
+                q0, q1, q2, q3 = q[3], q[0], q[1], q[2]
+                
+                dstate[state_def["quaternion"]] = 0.5 * np.array([
+                     q0 * omega[0] - q3 * omega[1] + q2 * omega[2],
+                     q3 * omega[0] + q0 * omega[1] - q1 * omega[2],
+                    -q2 * omega[0] + q1 * omega[1] + q0 * omega[2],
+                    -q1 * omega[0] - q2 * omega[1] - q3 * omega[2],
+                ])
+                
+                # Angular velocity dynamics are left as zero for now.
+                # When torque models are added, they will fill this in
+                # similar to how forces fill acceleration.
+                # dstate[state_def["angular_velocity"]] = I_inv @ (torque - omega x (I @ omega))
+            
+            return dstate
         
         return dynamics
