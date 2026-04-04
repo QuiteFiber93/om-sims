@@ -234,7 +234,7 @@ class TestDynamicsThirdBody:
     """Tests the third-body gravity branch where force.name != central_body.
     SPICE is mocked to avoid kernel dependency."""
     
-    @patch("src.forcemodel_updated.spice")
+    @patch("src.forcemodel.spice")
     def test_third_body_same_frame(self, mock_spice):
         """Third body in the same frame — no rotation needed."""
         mu_earth = 398600.4418
@@ -264,7 +264,7 @@ class TestDynamicsThirdBody:
         np.testing.assert_allclose(dstate[3:6], expected_acc, rtol=1e-10)
         mock_spice.spkpos.assert_called_once_with("MOON", 0.0, "J2000", "NONE", "EARTH")
     
-    @patch("src.forcemodel_updated.spice")
+    @patch("src.forcemodel.spice")
     def test_third_body_different_frame(self, mock_spice):
         """Third body in a different frame — rotation should be applied."""
         mu_earth = 398600.4418
@@ -304,7 +304,7 @@ class TestDynamicsThirdBody:
 
 class TestDynamicsDragDifferentFrame:
     
-    @patch("src.forcemodel_updated.spice")
+    @patch("src.forcemodel.spice")
     def test_drag_different_frame_identity_rotation(self, mock_spice):
         """Drag in a different frame with identity rotation should give same result."""
         mu = 398600.4418
