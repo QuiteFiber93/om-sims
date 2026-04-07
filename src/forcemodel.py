@@ -71,14 +71,17 @@ class ForceModel:
             
             for force in forces:
                 
+                # Contains logic for gravitational components of force model
                 if isinstance(force, GravityModel):
                     
+                    # Checks to see if we are dealing with third-body perturbations
                     if force.name == central_body:
                         relative_position = r
                     else:
                         body_pos = spice.spkpos(force.name, t, frame, "NONE", central_body)[0]
                         relative_position = r - body_pos
                     
+                    # Converts to the correct frame if needed.
                     if force.frame == frame:
                         acc += force.acceleration(t, relative_position, v)
                     else:
@@ -86,17 +89,19 @@ class ForceModel:
                         relative_position = R @ relative_position
                         acc += R.T @ force.acceleration(t, relative_position, v)
                         
+                # Logic for drag models        
                 elif isinstance(force, AerodynamicDrag):
                     
+                    # Checks for correct frame, if needed.
                     if force.frame == frame:
                         acc += force.acceleration(t, r, v)
                     else:
-                        # Need full 6-state transform for drag (velocity matters)
+                        # If a frame transition is needed, a full state rotation is calculated
                         sv = np.concatenate((r, v))
-                        R6 = spice.sxform(frame, force.frame, t)
-                        state_rel = R6 @ sv
-                        R3 = spice.pxform(force.frame, frame, t)
-                        acc += R3 @ force.acceleration(t, state_rel[:3], state_rel[3:6])
+                        state_rotation = spice.sxform(frame, force.frame, t)
+                        state_rel = state_rotation @ sv
+                        pos_rotation = spice.pxform(force.frame, frame, t)
+                        acc += pos_rotation @ force.acceleration(t, state_rel[:3], state_rel[3:6])
                         
                 else:
                     acc += force.acceleration(t, r, v)
@@ -126,8 +131,7 @@ class ForceModel:
                 ])
                 
                 # Angular velocity dynamics are left as zero for now.
-                # When torque models are added, they will fill this in
-                # similar to how forces fill acceleration.
+                # When torque models are added, they will require this
                 # dstate[state_def["angular_velocity"]] = I_inv @ (torque - omega x (I @ omega))
             
             return dstate

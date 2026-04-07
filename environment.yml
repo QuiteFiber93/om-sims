@@ -1,0 +1,19 @@
+name: orbital-mechanics
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12
+  - numpy
+  - scipy
+  - matplotlib
+  - spiceypy
+  - pyshtools
+  - pyvista
+  - pillow
+  - tqdm
+  - quaternion
+  - pytest
+  - pip
+  - pip:
+      - nrlmsise00
