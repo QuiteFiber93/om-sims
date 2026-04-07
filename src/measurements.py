@@ -14,8 +14,11 @@ class Measurement:
     def H(self):
         pass
     
-    def v(self):
-        return 0
+    def additive_noise(self, n: int, rng: np.random.Generator = None):
+        if rng is None:
+            rng = np.random.default_rng()
+        
+        return rng.normal(self.bias, self.sigma, n)
 
 class Range(Measurement):
     """Direct measurement of instantaneous range from observer.
@@ -49,12 +52,6 @@ class Range(Measurement):
         h_jacobian[0, self.pos_idx] = r / np.linalg.norm(r)
         
         return h_jacobian
-    
-    def additive_noise(self, n: int, rng: np.random.Generator = None):
-        if rng is None:
-            rng = np.random.default_rng()
-        
-        return rng.normal(self.bias, self.sigma, n)
 
 class RangeRate(Measurement):
     """Direct measurement of radial component of velocity (range rate)
@@ -99,7 +96,7 @@ class PositionAngles(Measurement):
         
         self.pos_idx = statedef['position']
         
-    def h(self, et: float | np.ndarray, r: np.ndarray, station_pos: np.ndarray):
+    def h(self, et: float, r: np.ndarray, station_pos: np.ndarray):
         pass
 
 class MeasurementModel:
