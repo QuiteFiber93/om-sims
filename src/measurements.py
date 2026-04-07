@@ -18,6 +18,8 @@ class Measurement:
         return 0
 
 class Range(Measurement):
+    """Direct measurement of instantaneous range from observer.
+    """
     def __init__(self, statedef: StateDefinition, bias, sigma):
         self.bias = bias
         self.sigma = sigma
@@ -28,8 +30,18 @@ class Range(Measurement):
         self.pos_idx = statedef['position']
         
     def h(self, et: float | np.ndarray, state: np.ndarray, station_pos: np.ndarray):
+        """Instantaneous range from observer to target. Typically frame invariant, but assumes topological ENU frame.
+
+        Args:
+            et (float | np.ndarray): ephemeris time of observation
+            state (np.ndarray): state of target at time of observation.
+            station_pos (np.ndarray): position of observer at time of observation.
+
+        Returns:
+            np.ndarray: array of observations
+        """
         r = state[self.pos_idx]
-        return np.linalg.norm(r - station_pos)
+        return np.linalg.norm(r - station_pos, axis = 0)
         
     def H(self, et: float | np.ndarray, r: np.ndarray):
         pass
@@ -69,4 +81,36 @@ class PositionAngles(Measurement):
 
 class MeasurementModel:
     def __init__(self, measurements: list[Measurement]):
+        self.measurements = measurements
+        
+    @property
+    def size(self) -> int:
+        return len(self.measurements)
+    
+    # not all measurements will need the station position (thinking about attitude)
+    # so idk what to do about that yet
+    def h(self, et: float | np.ndarray, state: np.ndarray, station_pos: np.ndarray = None) -> np.ndarray:
+        # Checking if et is a list of times, needed for shape of measurements return
+        ets = np.atleast_1d(et)
+        y = np.zeros((self.size))
+        
+        for i, measurement in self.measurements:
+            for t in range(ets.size):
+                state_t = state if state.ndim == 1 else state[:, t]
+                if station_position is not None:            
+                    station_position = station_pos if station_pos.ndim == 1 else station_pos[:, t]
+                y[i, t] = measurement.h(ets[t], state_t, station_position)
+                
+        return np.squeeze(y)
+    
+    def H(self, et: float | np.ndarray, state: np.ndarray, station_pos: np.ndarray = None, step: float = 1E-16) -> np.ndarray:
+        ets = np.atleast_1d(et)
+        
+        H = np.zeros((self.size, state.size, ets.size))
+        
+        # loop through measurements
+        # check to see if H is defined
+        # if H is defined, then calculate Jacobian analytically
+        # if H is not defined, then calculate Jacobian with finite difference
+        
         pass
