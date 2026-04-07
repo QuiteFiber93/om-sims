@@ -14,7 +14,7 @@ class Measurement:
     def H(self):
         pass
     
-    def noise(self):
+    def v(self):
         return 0
 
 class Range(Measurement):
@@ -29,24 +29,36 @@ class Range(Measurement):
         
         self.pos_idx = statedef['position']
         
-    def h(self, et: float | np.ndarray, state: np.ndarray, station_pos: np.ndarray):
+    def h(self, et: float, state: np.ndarray):
         """Instantaneous range from observer to target. Typically frame invariant, but assumes topological ENU frame.
 
         Args:
-            et (float | np.ndarray): ephemeris time of observation
-            state (np.ndarray): state of target at time of observation.
-            station_pos (np.ndarray): position of observer at time of observation.
+            et (float): ephemeris time of observation
+            state (np.ndarray): state of target relative to observer at time of observation.
 
         Returns:
             np.ndarray: array of observations
         """
         r = state[self.pos_idx]
-        return np.linalg.norm(r - station_pos, axis = 0)
+        return np.linalg.norm(r, axis = 0)
         
-    def H(self, et: float | np.ndarray, r: np.ndarray):
-        pass
+    def H(self, et: float, state: np.ndarray):
+        
+        r = state[self.pos_idx]
+        h_jacobian = np.zeros((1, state.shape[0]))
+        h_jacobian[0, self.pos_idx] = r / np.linalg.norm(r)
+        
+        return h_jacobian
+    
+    def additive_noise(self, n: int, rng: np.random.Generator = None):
+        if rng is None:
+            rng = np.random.default_rng()
+        
+        return rng.normal(self.bias, self.sigma, n)
 
 class RangeRate(Measurement):
+    """Direct measurement of radial component of velocity (range rate)
+    """
     def __init__(self, statedef: StateDefinition, bias, sigma):
         self.bias = bias
         self.sigma = sigma
@@ -60,11 +72,22 @@ class RangeRate(Measurement):
         self.pos_idx = statedef['position']
         self.vel_idx = statedef['velocity']
         
-    def h(self, et: float | np.ndarray, state: np.ndarray, station_pos: np.ndarray):
+    def h(self, et: float, state: np.ndarray):
         r = state[self.pos_idx]
         v = state[self.vel_idx]
         
-        return  r @ v / np.linalg.norm(r - station_pos)
+        return  r @ v / np.linalg.norm(r)
+        
+    def H(self, et: float, state: np.ndarray):
+        r = state[self.pos_idx]
+        v = state[self.vel_idx]
+        rho = np.linalg.norm(r)
+        
+        h_jacobian = np.zeros((1, state.size))
+        h_jacobian[0, self.pos_idx] = v/rho - (r @ v) * r / rho**3
+        h_jacobian[0, self.vel_idx] = r / rho
+        
+        return h_jacobian
 
 class PositionAngles(Measurement):
     def __init__(self, statedef: StateDefinition, bias, sigma):
@@ -94,7 +117,7 @@ class MeasurementModel:
         ets = np.atleast_1d(et)
         y = np.zeros((self.size))
         
-        for i, measurement in self.measurements:
+        for i, measurement in enumerate(self.measurements):
             for t in range(ets.size):
                 state_t = state if state.ndim == 1 else state[:, t]
                 if station_position is not None:            
