@@ -1,6 +1,7 @@
 import numpy as np
 from typing import Callable
 import pyshtools as sh
+import quaternion as quat
 from src.force import Perturbation
 
 class GravityModel(Perturbation):
@@ -223,8 +224,32 @@ class GravityModel(Perturbation):
         
         return acc_cartesian
     
-    def torque(self, t: float) -> np.ndarray:
-        pass
+    def torque(self, 
+               t: float, 
+               r: np.ndarray, 
+               v: np.ndarray, 
+               q: np.ndarray, 
+               omega: np.ndarray, 
+               I: np.ndarray = None) -> np.ndarray:
+        """Environmental Torque
+
+        Args:
+            t (float): epoch
+            r (np.ndarray): position vector
+            v (np.ndarray): velocity vector
+            q (np.ndarray): attitude quaternion
+            omega (np.ndarray): angular velocity
+            I (np.ndarray, optional): Inertia Tensor. Defaults to None.
+
+        Returns:
+            np.ndarray: _description_
+        """
+        if I is None:
+            raise ValueError("Inertia tensor (I) required for gravity gradient torque."f"Provided value: {I}.")
+            
+        rotation = quat.from_float_array(q)
+        r_body = quat.rotate_vectors(rotation.conjugate(), r)
+        return (3 * self.mu) / (np.linalg.norm(r)**5) * (np.cross(r_body, I @ r_body))
                 
 class PointMass(GravityModel):
     """Special case of Gravity Model where gravity has spherical symmetry
