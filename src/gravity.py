@@ -48,6 +48,8 @@ class GravityModel(Perturbation):
         self.S = S
         
         self.frame = frame
+        
+        self.include_torque = False
             
     @classmethod
     def from_coefficients(cls, name: str, mu: float, R: float, coefficients: dict) -> 'GravityModel':
