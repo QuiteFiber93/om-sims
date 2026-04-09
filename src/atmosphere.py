@@ -308,6 +308,8 @@ class AerodynamicDrag(Perturbation):
         self.mass = mass
         self.atmosphere = atmosphere
         self.frame = frame
+        
+        self.include_torque = False
     
     def acceleration(self, t: float, r: np.ndarray, v: np.ndarray):
         
