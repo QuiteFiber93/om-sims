@@ -10,3 +10,6 @@ plots/
 datasets/
 *.gfc
 *.bin
+
+# TODO list
+todo.txt

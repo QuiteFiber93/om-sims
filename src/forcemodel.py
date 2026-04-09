@@ -9,9 +9,9 @@ from src.state import StateDefinition, translational_state
 class ForceModel:
     """Class containing all perturbations/forces relevant to dynamics.
     
-    Accepts an optional StateDefinition to support flexible state vector layouts.
+    Accepts an optional StateDefinition to support state vector layouts.
     If no StateDefinition is provided, defaults to the standard 6-state 
-    [position(3), velocity(3)] layout for backward compatibility.
+    [position, velocity].
     """
     def __init__(self, *forces, central_body='EARTH', frame='J2000', state_def: StateDefinition = None):
         for force in forces:
@@ -25,7 +25,7 @@ class ForceModel:
         # Use provided state definition or default to translational
         self.state_def = state_def if state_def is not None else translational_state()
     
-    def build_dynamics(self, controller=None):
+    def build_dynamics(self, controller = None):
         """Builds the dynamics based on the list of forces in self.forces and returns 
         a function to be evaluated during integration.
         
@@ -113,7 +113,8 @@ class ForceModel:
             # d(velocity)/dt = acceleration
             dstate[state_def["velocity"]] = acc
             
-            # --- Attitude kinematics and dynamics (if present) ---
+            # Attitude kinematics and dynamics
+            # Not yet entirely implemented
             if state_def.has("quaternion") and state_def.has("angular_velocity"):
                 q = state[state_def["quaternion"]]
                 omega = state[state_def["angular_velocity"]]
