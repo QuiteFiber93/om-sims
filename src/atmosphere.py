@@ -314,3 +314,6 @@ class AerodynamicDrag(Perturbation):
     def acceleration(self, t: float, r: np.ndarray, v: np.ndarray):
         
         return -0.5 * self.atmosphere(t, r) * self.Cd * self.A / self.mass * np.linalg.norm(v) * v
+    
+    def torque(self, t: float, r: np.ndarray, v: np.ndarray, q: np.ndarray, omega: np.ndarray) -> np.ndarray:
+        pass
