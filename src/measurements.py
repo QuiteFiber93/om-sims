@@ -9,10 +9,11 @@ class Measurement:
         pass
     
     def h(self):
-        pass
+        raise NotImplementedError("Subclasses of Measurement must implement h()")
     
     def H(self):
-        pass
+        return None
+    
     
     def additive_noise(self, n: int, rng: np.random.Generator = None):
         if rng is None:

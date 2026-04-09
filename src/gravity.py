@@ -220,6 +220,9 @@ class GravityModel(Perturbation):
             return acc_cartesian[:, 0]
         
         return acc_cartesian
+    
+    def torque(self, t: float) -> np.ndarray:
+        pass
                 
 class PointMass(GravityModel):
     """Special case of Gravity Model where gravity has spherical symmetry
