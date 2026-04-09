@@ -4,6 +4,7 @@ from scipy.interpolate import interp1d
 from datetime import datetime, timedelta
 from nrlmsise00 import msise_flat
 import spiceypy as spice
+import quaternion as quat
 
 from src.force import Perturbation
 from src.constants import R_E, R_gas, g0, mu_E
@@ -301,19 +302,32 @@ class AerodynamicDrag(Perturbation):
     """Perturbation class which uses atmosphere models and satellite properties to calculate the aerodynamic drag force on satellites.
     All inputs and outputs use km-based units for consistency with the force model.
     """
-    def __init__(self, Cd: float, A: float, mass: float, atmosphere: AtmosphereModel, frame: str = 'IAU_EARTH'):
+    def __init__(self, Cd: float, A: float, mass: float, r_cp: np.ndarray, atmosphere: AtmosphereModel, frame: str = 'IAU_EARTH'):
         # I don't know if Cd and A should be part of the the Aerodynamic Drag class or parameters of the acceleration
         self.Cd = Cd
         self.A = A
         self.mass = mass
         self.atmosphere = atmosphere
         self.frame = frame
-        
         self.include_torque = False
+        self.r_cp = r_cp
     
     def acceleration(self, t: float, r: np.ndarray, v: np.ndarray):
         
         return -0.5 * self.atmosphere(t, r) * self.Cd * self.A / self.mass * np.linalg.norm(v) * v
     
     def torque(self, t: float, r: np.ndarray, v: np.ndarray, q: np.ndarray, omega: np.ndarray) -> np.ndarray:
-        pass
+        
+        # Need to convert v to body frame
+        # d/dt(r)_body = d/dt(r)_intertial + omega cross (r)
+        # Rotating r and v to body frame
+        rotation = quat.from_float_array(q)
+        r_body = quat.rotate_vectors(rotation.conjugate(), r)
+        v_body = quat.rotate_vectors(rotation.conjugate(), v)
+        
+        # T = r cross F
+        F = self.acceleration(t, r, v_body) * self.mass
+        
+        T = np.cross(self.r_cp, F)
+        
+        # rotate back to inertial vector and return
